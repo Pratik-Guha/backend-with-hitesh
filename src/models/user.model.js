@@ -24,12 +24,6 @@ const userSchema= new Schema({
         trim:true,
         lowercase:true,
     },
-    email:{
-        type:String,
-        required:true,
-        trim:true,
-        index:true
-    },
     avatar:{
         type:String,
         required:true,
@@ -55,7 +49,7 @@ const userSchema= new Schema({
 
 userSchema.pre("save", async function(next){
     if(!this.isModified("password")) return next();
-    this.password=bcrypt.hashSync(this.password,10);
+    this.password=await bcrypt.hash(this.password,10);
     next();
 })
 
@@ -63,7 +57,7 @@ userSchema.methods.isPasswordCorrect=async function(password){
    return await bcrypt.compare(password,this.password);
 }
 
-userSchema.methods.generateAccessTocken=function(){
+userSchema.methods.generateAccessToken=function(){
     return jwt.sign(
         {
             _id:this._id,
@@ -76,7 +70,7 @@ userSchema.methods.generateAccessTocken=function(){
         }
     )
 }
-userSchema.methods.generateRefreshTocken=function(){
+userSchema.methods.generateRefreshToken=function(){
     return jwt.sign(
         {
             _id:this._id,
