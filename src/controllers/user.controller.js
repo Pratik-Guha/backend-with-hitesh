@@ -161,8 +161,9 @@ const logoutUser=asyncHandler(async (req,res)=>{
     )
 })
 
+// If there is any issue with the under part then just change it in the future for now go on
 const refreshAccessToken=asyncHandler(async (req,res)=>{
-  const incomingRefreshToken=req.cookies.refreshToken || req.body.refreshTocken
+  const incomingRefreshToken=req.cookies.refreshToken || req.body.refreshToken
 
   if(!incomingRefreshToken){
     throw new ApiError(400, "Refresh token is required")
@@ -179,7 +180,7 @@ const refreshAccessToken=asyncHandler(async (req,res)=>{
      throw new ApiError(404, "Invalid refresh token")
    }
  
-   if(incomingRefreshToken!== user?.refreshTocken){
+   if(incomingRefreshToken!== user?.refreshToken){
      throw new ApiError(401, "Refresh token is expired or used")
    }
  
