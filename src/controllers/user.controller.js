@@ -75,7 +75,7 @@ const registerUser = asyncHandler(async (req, res) => {
     username: username.toLowerCase()
   })
 
-  const createdUser = await User.findById(user._id).select("-password -refreshTocken")
+  const createdUser = await User.findById(user._id).select("-password -refreshToken")
 
   if (!createdUser) {
     throw new ApiError(500, "Something went wrong while registering user")
@@ -114,7 +114,7 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   const { accessToken, refreshToken } = await generateAccessAndrefreshToken(user._id)
-  const loggedInUser = await User.findById(user._id).select("-password -refreshTocken")
+  const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
 
   const options = {
     httpOnly: true,
@@ -140,9 +140,8 @@ const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: {
-        refreshTocken: "",
-
+      $unset:{
+        refreshToken:1
       }
     },
     {
@@ -167,21 +166,23 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
 
   if (!(incomingRefreshToken)) {
+    console.log("refresh token not found")
     throw new ApiError(400, "Refresh token is required")
   }
 
   try {
-    const decodedToekn = jwt.verify(
+    const decodedToken = jwt.verify(
       incomingRefreshToken,
       process.env.REFRESH_TOKEN_SECRET,
     )
 
-    const user = await User.findById(decodedToekn?._id)
+    const user = await User.findById(decodedToken?._id)
     if (!user) {
       throw new ApiError(404, "Invalid refresh token")
     }
 
     if (incomingRefreshToken !== user?.refreshToken) {
+      console.log("refresh token does not match")
       throw new ApiError(401, "Refresh token is expired or used")
     }
 
@@ -204,7 +205,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         )
       )
   } catch (error) {
-    throw new ApiError(402, error?.message || "Something went wrong while refreshing access token")
+    throw new ApiError(401, error?.message || "Something went wrong while refreshing access token")
   }
 })
 
@@ -240,7 +241,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 const updateAccountDetails = asyncHandler(async (req, res) => {
   const { fullName, email } = req.body
 
-  if (!fullName && !email) {
+  if (!fullName || !email) {
     throw new ApiError(400, "Full name and email are required")
   }
 
@@ -251,7 +252,8 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
         fullName,
         email
       }
-    }
+    },
+    {new: true}
   ).select("-password")
 
   return res
@@ -270,7 +272,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 
   const avatar = await uploadOnCloudinary(avatarLocalPath)
 
-  if (!avatar) {
+  if (!avatar.url) {
     throw new ApiError(500, "Failed while upload  upload avatar")
   }
 
@@ -298,7 +300,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 
   const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
-  if (!coverImage) {
+  if (!coverImage.url) {
     throw new ApiError(500, "Failed while upload  upload avatar")
   }
 
@@ -314,7 +316,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     }
   ).select("-password")
   return res.status(200).json(
-    ApiResponse(200, user, "Cover image updated successfully")
+   new ApiResponse(200, user, "Cover image updated successfully")
   )
 })
 
@@ -350,15 +352,16 @@ const getUserChannelProfile=asyncHandler(async(req,res)=>{
       {
         $addFields:{
           subscribersCount:{$size:"$subscribers"},
-        },
-        channelsSubscribedToCount:{
-          $size:"$subscribedTo"
-        },
-        isSubscribed:{
-          $cond:{
-            if:{$in:[req.user?._id,"$subscribers.subscriber"]},
-            then:true,
-            else:false
+        
+          channelsSubscribedToCount:{
+            $size:"$subscribedTo"
+          },
+          isSubscribed:{
+            $cond:{
+              if:{$in:[req.user?._id,"$subscribers.subscriber"]},
+              then:true,
+              else:false
+            }
           }
         }
       },
@@ -388,7 +391,7 @@ const getWatchHistory= asyncHandler(async (req,res)=>{
   const user=await User.aggregate([
     {
       $match:{
-      _id:new mongoose.Types.ObjectId(req.user?._id)
+        _id:new mongoose.Types.ObjectId(req.user._id)
       }
     },
     {
