@@ -241,7 +241,8 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 const updateAccountDetails = asyncHandler(async (req, res) => {
   const { fullName, email } = req.body
 
-  if (!fullName || !email) {
+  if (!fullName && !email) {
+    console.log("Full name and email are required")
     throw new ApiError(400, "Full name and email are required")
   }
 
@@ -267,6 +268,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 
   const avatarLocalPath = req.file?.path
   if (!avatarLocalPath) {
+    console.log("Avatar file is missing")
     throw new ApiError(400, "Avatar file is missing")
   }
 
@@ -295,12 +297,14 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 
   const coverImageLocalPath = req.file?.path
   if (!coverImageLocalPath) {
+    console.log("cover image file is missing")
     throw new ApiError(400, "cover image file is missing")
   }
 
   const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
   if (!coverImage.url) {
+    console.log("Failed while upload  upload avatar")
     throw new ApiError(500, "Failed while upload  upload avatar")
   }
 
